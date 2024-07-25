@@ -1,11 +1,15 @@
 import pygame
+import os
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.image.load('assets/images/player.png').convert_alpha()
+        current_dir = os.path.dirname(__file__)
+        image_path = os.path.join(current_dir, '../images/player.png')
+        self.image = pygame.image.load(image_path).convert_alpha()
+        self.image = pygame.transform.scale(self.image, (50, 60))
         self.rect = self.image.get_rect()
-        self.rect.center = (400, 300)
+        self.rect.center = (200, 100)
         self.speed = 5
 
     def update(self):
