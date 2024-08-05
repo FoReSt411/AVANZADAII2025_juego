@@ -83,6 +83,77 @@ def main_menu():
                     pygame.quit()
                     exit()
 
+# Clase para la selección de personajes
+class CharacterSelection:
+    def __init__(self):
+        self.character_images = [
+            pygame.image.load(os.path.join(current_dir, '../characters/character1.png')).convert_alpha(),
+            pygame.image.load(os.path.join(current_dir, '../characters/character2.png')).convert_alpha(),
+            pygame.image.load(os.path.join(current_dir, '../characters/character3.png')).convert_alpha(),
+            pygame.image.load(os.path.join(current_dir, '../characters/character4.png')).convert_alpha()
+        ]
+        self.character_size = (100, 100)
+        self.character_images = [pygame.transform.scale(img, self.character_size) for img in self.character_images]
+        self.player1_selection = 0
+        self.player2_selection = 1
+        self.selected_rect_color = (0, 0, 255)  # Color azul para el marco de selección
+        self.border_thickness = 5
+        self.font = pygame.font.Font(None, 36)
+        self.player1_confirmed = False
+        self.player2_confirmed = False
+
+    def draw(self):
+        screen.blit(background_image, (0, 0))
+
+        for i, img in enumerate(self.character_images):
+            x = 100 + i * 120
+            y = 200
+            screen.blit(img, (x, y))
+            if i == self.player1_selection:
+                pygame.draw.rect(screen, self.selected_rect_color, (x, y, self.character_size[0], self.character_size[1]), self.border_thickness)
+            if i == self.player2_selection:
+                pygame.draw.rect(screen, self.selected_rect_color, (x, y + 150, self.character_size[0], self.character_size[1]), self.border_thickness)
+
+        instruction_text = self.font.render("Player 1: WASD to select, SPACE to confirm", True, (255, 255, 255))
+        screen.blit(instruction_text, (50, 50))
+        instruction_text = self.font.render("Player 2: Arrow keys to select, ENTER to confirm", True, (255, 255, 255))
+        screen.blit(instruction_text, (50, 100))
+
+        pygame.display.flip()
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+            if event.type == pygame.KEYDOWN:
+                if not self.player1_confirmed:
+                    if event.key == pygame.K_w:
+                        self.player1_selection = (self.player1_selection - 1) % len(self.character_images)
+                    if event.key == pygame.K_s:
+                        self.player1_selection = (self.player1_selection + 1) % len(self.character_images)
+                    if event.key == pygame.K_SPACE:
+                        self.player1_confirmed = True
+                        print(f"Player 1 selected character {self.player1_selection + 1}")
+
+                if not self.player2_confirmed:
+                    if event.key == pygame.K_UP:
+                        self.player2_selection = (self.player2_selection - 1) % len(self.character_images)
+                    if event.key == pygame.K_DOWN:
+                        self.player2_selection = (self.player2_selection + 1) % len(self.character_images)
+                    if event.key == pygame.K_RETURN:
+                        self.player2_confirmed = True
+                        print(f"Player 2 selected character {self.player2_selection + 1}")
+
+    def run(self):
+        while not (self.player1_confirmed and self.player2_confirmed):
+            self.handle_events()
+            self.draw()
+            clock.tick(60)
+
+        return self.player1_selection, self.player2_selection
+
 # Función para el menú de opciones de juego
 def game_options_menu():
     menu_running = True
