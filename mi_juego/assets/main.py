@@ -1,43 +1,58 @@
+
 import pygame
 import settings
 import os
 from PIL import Image
 
+# Configuración inicial
 pygame.init()
-screen = pygame.display.set_mode((settings.WIDTH, settings.HEIGHT))
+
+# Definir tamaño de la ventana y pantalla completa
+WINDOW_WIDTH, WINDOW_HEIGHT = 1920, 1080
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+FPS = 60
+# Definir el título y el reloj
 pygame.display.set_caption(settings.TITLE)
 clock = pygame.time.Clock()
 
 # Cargar imágenes
 current_dir = os.path.dirname(__file__)
-player_image = pygame.image.load(os.path.join(current_dir, '../images/player.png')).convert_alpha()
-player_image = pygame.transform.scale(player_image, (50, 60))
-player2_image = pygame.image.load(os.path.join(current_dir, '../images/player2.png')).convert_alpha()
-player2_image = pygame.transform.scale(player2_image, (50, 60))
-background_image = pygame.image.load(os.path.join(current_dir, '../images/background.png')).convert_alpha()
+background_image_path = os.path.join(current_dir, '../images/background.png')
+logo_image_path = os.path.join(current_dir, '../images/logo.png')
 
-# Cargar y redimensionar el logo
-logo_image = pygame.image.load(os.path.join(current_dir, '../images/logo.png')).convert_alpha()
-logo_size = (280, 200)  # Tamaño deseado para el logo
-logo_image = pygame.transform.scale(logo_image, logo_size)  # Redimensionar el logo
+try:
+    background_image = pygame.image.load(background_image_path).convert_alpha()
+    background_image = pygame.transform.scale(background_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
+except pygame.error as e:
+    print(f"Error loading background image: {e}")
+    background_image = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))  # Fallback to a solid color
+
+try:
+    logo_image = pygame.image.load(logo_image_path).convert_alpha()
+    logo_image = pygame.transform.scale(logo_image, (280, 200))
+except pygame.error as e:
+    print(f"Error loading logo image: {e}")
+    logo_image = pygame.Surface((280, 200))  # Fallback to a solid color
 
 # Función para cargar y obtener los frames del GIF
 def load_gif_frames(gif_path, size):
-    pil_image = Image.open(gif_path)
     frames = []
     try:
-        while True:
-            frame = pil_image.resize(size, Image.Resampling.LANCZOS)  # Redimensionar el frame
-            frame = pygame.image.fromstring(frame.tobytes(), frame.size, frame.mode).convert_alpha()
-            frames.append(frame)
-            pil_image.seek(pil_image.tell() + 1)
-    except EOFError:
-        pass
+        # Cargar el GIF usando Pygame
+        pil_image = Image.open(gif_path)
+        for frame in range(pil_image.n_frames):
+            pil_image.seek(frame)
+            frame_img = pil_image.convert('RGBA')
+            frame_img = pygame.image.fromstring(frame_img.tobytes(), frame_img.size, 'RGBA').convert_alpha()
+            frame_img = pygame.transform.scale(frame_img, size)
+            frames.append(frame_img)
+    except Exception as e:
+        print(f"Error loading GIF frames: {e}")
     return frames
 
-# Cargar frames del GIF para el menú y redimensionar a 1000x500
+# Cargar frames del GIF para el menú y redimensionar a 1920x1080
 gif_path = os.path.join(current_dir, '../images/menu_background2.gif')
-menu_background_frames = load_gif_frames(gif_path, (settings.WIDTH, settings.HEIGHT))
+menu_background_frames = load_gif_frames(gif_path, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
 # Función del menú principal
 def main_menu():
@@ -61,14 +76,14 @@ def main_menu():
         screen.blit(menu_background_frames[intro_index], (0, 0))
 
         # Mostrar el logo sobre la imagen de fondo
-        logo_rect = logo_image.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 2 - 200))  # Mover el logo 200 píxeles hacia arriba
+        logo_rect = logo_image.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 200))  # Mover el logo 200 píxeles hacia arriba
         screen.blit(logo_image, logo_rect)
 
         # Mostrar el texto "PRESIONA ENTER PARA INICIAR" y "PRESIONA ESC PARA SALIR"
         play_text = font.render("Press ENTER to Play", True, text_color)
         exit_text = font.render("Press ESC to Exit", True, text_color)
-        screen.blit(play_text, (settings.WIDTH // 2 - play_text.get_width() // 2, settings.HEIGHT // 2))
-        screen.blit(exit_text, (settings.WIDTH // 2 - exit_text.get_width() // 2, settings.HEIGHT // 2 + font_size + 10))
+        screen.blit(play_text, (WINDOW_WIDTH // 2 - play_text.get_width() // 2, WINDOW_HEIGHT // 2))
+        screen.blit(exit_text, (WINDOW_WIDTH // 2 - exit_text.get_width() // 2, WINDOW_HEIGHT // 2 + font_size + 10))
 
         pygame.display.flip()
 
@@ -84,75 +99,24 @@ def main_menu():
                     exit()
 
 # Clase para la selección de personajes
-class CharacterSelection:
+class CharacterManager:
     def __init__(self):
-        self.character_images = [
-            pygame.image.load(os.path.join(current_dir, '../characters/character1.png')).convert_alpha(),
-            pygame.image.load(os.path.join(current_dir, '../characters/character2.png')).convert_alpha(),
-            pygame.image.load(os.path.join(current_dir, '../characters/character3.png')).convert_alpha(),
-            pygame.image.load(os.path.join(current_dir, '../characters/character4.png')).convert_alpha()
-        ]
-        self.character_size = (100, 100)
-        self.character_images = [pygame.transform.scale(img, self.character_size) for img in self.character_images]
-        self.player1_selection = 0
-        self.player2_selection = 1
-        self.selected_rect_color = (0, 0, 255)  # Color azul para el marco de selección
-        self.border_thickness = 5
-        self.font = pygame.font.Font(None, 36)
-        self.player1_confirmed = False
-        self.player2_confirmed = False
+        self.characters = {
+            "Goku": self.load_gif('../characters/goku.gif'),
+            "Naruto": self.load_gif('../characters/naruto.gif'),
+            "Inuyasha": self.load_gif('../characters/inuyasha.gif'),
+            "Ichigo": self.load_gif('../characters/ichigo.gif')
+        }
 
-    def draw(self):
-        screen.blit(background_image, (0, 0))
+    def load_gif(self, path):
+        gif_frames = load_gif_frames(os.path.join(current_dir, path), (100, 100))
+        return gif_frames
 
-        for i, img in enumerate(self.character_images):
-            x = 100 + i * 120
-            y = 200
-            screen.blit(img, (x, y))
-            if i == self.player1_selection:
-                pygame.draw.rect(screen, self.selected_rect_color, (x, y, self.character_size[0], self.character_size[1]), self.border_thickness)
-            if i == self.player2_selection:
-                pygame.draw.rect(screen, self.selected_rect_color, (x, y + 150, self.character_size[0], self.character_size[1]), self.border_thickness)
+    def get_character_image(self, name):
+        return self.characters[name]
 
-        instruction_text = self.font.render("Player 1: WASD to select, SPACE to confirm", True, (255, 255, 255))
-        screen.blit(instruction_text, (50, 50))
-        instruction_text = self.font.render("Player 2: Arrow keys to select, ENTER to confirm", True, (255, 255, 255))
-        screen.blit(instruction_text, (50, 100))
-
-        pygame.display.flip()
-
-    def handle_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-
-            if event.type == pygame.KEYDOWN:
-                if not self.player1_confirmed:
-                    if event.key == pygame.K_w:
-                        self.player1_selection = (self.player1_selection - 1) % len(self.character_images)
-                    if event.key == pygame.K_s:
-                        self.player1_selection = (self.player1_selection + 1) % len(self.character_images)
-                    if event.key == pygame.K_SPACE:
-                        self.player1_confirmed = True
-                        print(f"Player 1 selected character {self.player1_selection + 1}")
-
-                if not self.player2_confirmed:
-                    if event.key == pygame.K_UP:
-                        self.player2_selection = (self.player2_selection - 1) % len(self.character_images)
-                    if event.key == pygame.K_DOWN:
-                        self.player2_selection = (self.player2_selection + 1) % len(self.character_images)
-                    if event.key == pygame.K_RETURN:
-                        self.player2_confirmed = True
-                        print(f"Player 2 selected character {self.player2_selection + 1}")
-
-    def run(self):
-        while not (self.player1_confirmed and self.player2_confirmed):
-            self.handle_events()
-            self.draw()
-            clock.tick(60)
-
-        return self.player1_selection, self.player2_selection
+    def get_character_names(self):
+        return list(self.characters.keys())
 
 # Función para el menú de opciones de juego
 def game_options_menu():
@@ -176,7 +140,7 @@ def game_options_menu():
         # Mostrar el texto de opciones de juego
         for i, option in enumerate(options):
             text = font.render(option, True, text_color)
-            rect = text.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 2 - 100 + i * (font_size + 10)))
+            rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100 + i * (font_size + 10)))
             screen.blit(text, rect)
 
             # Resaltar la opción seleccionada
@@ -200,9 +164,9 @@ def game_options_menu():
                         exit()
                     else:
                         if selected_option == 0:
-                            player1_char, player2_char = CharacterSelection().run()
-                            print(f"Player 1 selected character: {player1_char + 1}")
-                            print(f"Player 2 selected character: {player2_char + 1}")
+                            # Iniciar el juego con dos personajes
+                            player1_char, player2_char = "Goku", "Naruto"  # O selecciona personajes según lo que hayas decidido
+                            game(player1_char, player2_char)
                         elif selected_option == 1:
                             print("Survival Mode selected")
                         elif selected_option == 2:
@@ -216,13 +180,27 @@ def game_options_menu():
 
 # Clase Player (debe estar definida en tu código original)
 class Player(pygame.sprite.Sprite):
-    def __init__(self, image, start_pos, controls):
+    def __init__(self, images, start_pos, controls):
         super().__init__()
-        self.image = image
+        self.images = images
+        self.image = self.images[0]  # Asignar el primer frame
         self.rect = self.image.get_rect()
         self.rect.topleft = start_pos
         self.speed = 5
         self.controls = controls  # (arriba, izquierda, abajo, derecha)
+        self.frame_index = 0
+        self.frame_delay = 100  # Tiempo en milisegundos entre frames
+        self.last_frame_time = pygame.time.get_ticks()
+
+        # Almacena la posición inicial vertical
+        self.initial_y = start_pos[1]
+
+        # Variables de salto
+        self.is_jumping = False
+        self.jump_speed = -15
+        self.gravity = 1
+        self.velocity_y = 0
+        self.jump_height = 100  # Altura máxima del salto
 
     def update(self):
         keys = pygame.key.get_pressed()
@@ -230,17 +208,42 @@ class Player(pygame.sprite.Sprite):
             self.rect.x -= self.speed
         if keys[self.controls[3]]:  # Movimiento derecha
             self.rect.x += self.speed
-        if keys[self.controls[0]]:  # Movimiento arriba
-            self.rect.y -= self.speed
-        if keys[self.controls[2]]:  # Movimiento abajo
-            self.rect.y += self.speed
+        
+        if keys[self.controls[0]] and not self.is_jumping:  # Salto
+            self.is_jumping = True
+            self.velocity_y = self.jump_speed
+
+        if self.is_jumping:
+            self.rect.y += self.velocity_y
+            self.velocity_y += self.gravity
+
+            # Limitar el salto y el retorno al suelo
+            if self.rect.y >= self.initial_y:
+                self.rect.y = self.initial_y
+                self.is_jumping = False
+                self.velocity_y = 0
+
+        # Actualizar el frame del GIF
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_frame_time > self.frame_delay:
+            self.frame_index = (self.frame_index + 1) % len(self.images)
+            self.image = self.images[self.frame_index]
+            self.last_frame_time = current_time
+
+
 
 # Función principal del juego
-def game():
+def game(player1_char, player2_char):
     all_sprites = pygame.sprite.Group()
 
-    player1 = Player(player_image, (200, 100), (pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d))  # Jugador 1
-    player2 = Player(player2_image, (400, 300), (pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT))  # Jugador 2
+    # Instanciar el CharacterManager para obtener imágenes de personajes
+    character_manager = CharacterManager()
+    player1_images = character_manager.get_character_image(player1_char)  # Obtener imágenes del personaje seleccionado
+    player2_images = character_manager.get_character_image(player2_char)  # Obtener imágenes del personaje seleccionado
+
+    # Crear los jugadores
+    player1 = Player(player1_images, (200, WINDOW_HEIGHT - 250), (pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d))
+    player2 = Player(player2_images, (WINDOW_WIDTH - 350, WINDOW_HEIGHT - 250), (pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT))
 
     all_sprites.add(player1, player2)
 
@@ -252,14 +255,20 @@ def game():
 
         all_sprites.update()
 
+        # Detectar colisiones entre los jugadores usando máscaras
+        if pygame.sprite.collide_mask(player1, player2):
+            # Reaccionar a la colisión
+            # Por ejemplo, detener el movimiento o realizar una acción
+            player1.rect.x -= player1.speed  # Ajustar según sea necesario
+            player2.rect.x += player2.speed  # Ajustar según sea necesario
+
         screen.blit(background_image, (0, 0))
         all_sprites.draw(screen)
         pygame.display.flip()
-        clock.tick(60)
+        clock.tick(FPS)
 
     pygame.quit()
 
 # Llamar al menú principal antes de iniciar el juego
 main_menu()
 game_options_menu()
-game()
